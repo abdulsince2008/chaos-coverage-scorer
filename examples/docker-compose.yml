@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  # Test application that exposes metrics for Prometheus
+  test-app:
+    image: prom/prometheus:v2.47.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules:/etc/prometheus/rules
+    networks:
+      - chaos-net
+
+  # Alertmanager to receive and manage alerts
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=http://localhost:9093"
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - chaos-net
+
+  # Node exporter for host metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - chaos-net
+
+  # A simple HTTP service to target with chaos
+  http-echo:
+    image: hashicorp/http-echo:0.2.3
+    command: ["-text", "hello from chaos test", "-listen", ":5678"]
+    ports:
+      - "5678:5678"
+    networks:
+      - chaos-net
+
+  # Pumba for chaos injection (run separately via chaos-scorer)
+  # This is just here for reference - the tool runs Pumba as a separate container
+
+networks:
+  chaos-net:
+    driver: bridge

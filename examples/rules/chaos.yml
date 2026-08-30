@@ -1,0 +1,45 @@
+groups:
+  - name: chaos-test-alerts
+    interval: 10s
+    rules:
+      - alert: TargetContainerDown
+        expr: up{job="http-echo"} == 0
+        for: 5s
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Target container {{ $labels.instance }} is down"
+          description: "The http-echo container has been stopped/killed"
+          runbook_url: "https://example.com/runbooks/container-down"
+
+      - alert: TargetContainerHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="http-echo"}[1m])) > 1
+        for: 10s
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High latency on {{ $labels.instance }}"
+          description: "P95 latency exceeds 1 second"
+
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 30s
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "Node exporter is down"
+          description: "Cannot scrape node-exporter metrics"
+
+      - alert: NodeExporterDownFast
+        expr: up{job="node-exporter"} == 0
+        for: 5s
+        labels:
+          severity: warning
+          team: infra
+          test: "true"
+        annotations:
+          summary: "Node exporter is down (fast test)"
+          description: "Cannot scrape node-exporter metrics - test alert"

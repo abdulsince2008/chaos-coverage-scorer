@@ -1,0 +1,53 @@
+alertmanager_url: "http://localhost:9093"
+pumba_image: "ghcr.io/alexei-led/pumba:latest"
+
+experiments:
+  - name: "container-kill-test"
+    description: "Kill the node-exporter container and verify NodeExporterDownFast alert fires"
+    fault:
+      type: "kill"
+      target: "examples-node-exporter-1"
+      duration: "30s"
+      params:
+        signal: "SIGKILL"
+    expected_alerts:
+      - alertname: "NodeExporterDownFast"
+        labels:
+          severity: "warning"
+          team: "infra"
+          test: "true"
+    alertmanager_url: "http://localhost:9093"
+    wait_after_fault: 10
+    timeout: 60
+
+  - name: "container-stop-test"
+    description: "Stop the node-exporter container gracefully and verify alert"
+    fault:
+      type: "stop"
+      target: "examples-node-exporter-1"
+      duration: "30s"
+    expected_alerts:
+      - alertname: "NodeExporterDownFast"
+        labels:
+          severity: "warning"
+          test: "true"
+    alertmanager_url: "http://localhost:9093"
+    wait_after_fault: 10
+    timeout: 60
+
+  - name: "network-latency-test"
+    description: "Inject network latency on node-exporter and verify high latency alert"
+    fault:
+      type: "netem"
+      target: "examples-node-exporter-1"
+      duration: "30s"
+      params:
+        delay: "500ms"
+        jitter: "100ms"
+    expected_alerts:
+      - alertname: "TargetContainerHighLatency"
+        labels:
+          severity: "warning"
+    alertmanager_url: "http://localhost:9093"
+    wait_after_fault: 15
+    timeout: 90
